@@ -7,7 +7,8 @@ A Python script that takes your Instagram reel script, analyzes it with AI to fi
 - Uses OpenAI (GPT-4o-mini) to intelligently extract visual search terms from your script
 - Searches both Pexels and Unsplash for variety
 - Downloads portrait-oriented images (ideal for reels)
-- Organizes images in timestamped folders
+- **Automatically downloads company logos** for any brands mentioned in your script
+- Organizes images in timestamped folders with a `logos/` subfolder
 - Automatically opens the download folder when complete (macOS)
 
 ## Setup
@@ -111,7 +112,11 @@ Images are saved to `~/Downloads/reel-images/` in timestamped folders:
     ├── 01_pexels_12345678.jpg
     ├── 02_unsplash_abc123.jpg
     ├── 03_pexels_87654321.jpg
-    └── ...
+    ├── ...
+    └── logos/
+        ├── spacex_logo.png
+        ├── openai_logo.png
+        └── ...
 ```
 
 ## Troubleshooting

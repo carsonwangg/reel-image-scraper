@@ -88,6 +88,73 @@ Rules:
     return terms
 
 
+def extract_company_names(script: str) -> list[str]:
+    """Use OpenAI to extract company names mentioned in the script."""
+    print("\n🏢 Extracting company names...")
+    
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": """You are an expert at identifying company and brand names in text.
+Given an Instagram reel script, extract all company/brand names mentioned.
+
+Rules:
+- Include tech companies, startups, corporations, products with distinct brands
+- Use the official company name (e.g., "OpenAI" not "open ai")
+- Return ONLY the company names, one per line, no numbering or bullets
+- If no companies are mentioned, return "NONE" """
+            },
+            {
+                "role": "user",
+                "content": f"Extract company names from this Instagram reel script:\n\n{script}"
+            }
+        ],
+        temperature=0.3,
+        max_tokens=150
+    )
+    
+    names = response.choices[0].message.content.strip().split("\n")
+    names = [n.strip() for n in names if n.strip() and n.strip().upper() != "NONE"]
+    
+    if names:
+        print(f"   Found companies: {', '.join(names)}")
+    else:
+        print("   No company names found")
+    return names
+
+
+def download_company_logo(company: str, output_dir: Path) -> bool:
+    """Download a company logo from a logo database."""
+    # Try multiple logo sources
+    logo_sources = [
+        f"https://logo.clearbit.com/{company.lower().replace(' ', '')}.com",
+        f"https://companieslogo.com/img/orig/{company.lower().replace(' ', '-')}-logo.png",
+    ]
+    
+    # Create logos directory
+    logos_dir = output_dir / "logos"
+    logos_dir.mkdir(exist_ok=True)
+    
+    for url in logo_sources:
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200 and len(response.content) > 1000:
+                # Valid image found
+                safe_name = "".join(c if c.isalnum() else "_" for c in company.lower())
+                filepath = logos_dir / f"{safe_name}_logo.png"
+                with open(filepath, "wb") as f:
+                    f.write(response.content)
+                return True
+        except Exception:
+            continue
+    
+    return False
+
+
 def search_pexels(query: str, count: int = 5) -> list[dict]:
     """Search Pexels for images."""
     url = "https://api.pexels.com/v1/search"
@@ -214,6 +281,9 @@ def main():
         print("❌ Could not extract search terms. Exiting.")
         sys.exit(1)
     
+    # Extract company names for logo downloads
+    company_names = extract_company_names(script)
+    
     # Search for images
     print("\n🔍 Searching for images...")
     all_images = []
@@ -268,9 +338,23 @@ def main():
         else:
             print("✗")
     
+    # Download company logos
+    logos_downloaded = 0
+    if company_names:
+        print(f"\n🏢 Downloading company logos...")
+        for company in company_names:
+            print(f"   Downloading: {company}...", end=" ")
+            if download_company_logo(company, output_dir):
+                print("✓")
+                logos_downloaded += 1
+            else:
+                print("✗ (not found)")
+    
     # Summary
     print("\n" + "=" * 50)
     print(f"✅ Done! Downloaded {downloaded}/{len(unique_images)} images")
+    if company_names:
+        print(f"🏢 Downloaded {logos_downloaded}/{len(company_names)} company logos")
     print(f"📁 Location: {output_dir}")
     print("=" * 50)
     
